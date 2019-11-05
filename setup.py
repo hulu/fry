@@ -1,4 +1,3 @@
-import re
 from os import path
 from setuptools import setup, find_packages
 
@@ -15,7 +14,7 @@ setup(
     author="Paul Henke",
     author_email="paul.henke@hulu.com",
 
-    license=None,
+    license="Apache 2.0",
 
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -26,6 +25,8 @@ setup(
         'Programming Language :: Python:: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
+
+        'License :: OSI Approved :: Apache Software License',
     ],
 
     keywords='requests stats',
