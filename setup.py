@@ -10,6 +10,7 @@ setup(
 
     description="Library for maintaining tracked requests sessions",
     long_description=long_description,
+    long_description_content_type='text/markdown',
 
     author="Paul Henke",
     author_email="paul.henke@hulu.com",
