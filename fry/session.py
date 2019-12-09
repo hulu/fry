@@ -120,15 +120,15 @@ class FrySession(requests.Session):
     """Stats tracking methods"""
 
     def _track_error(self, signature, ex):
+        stat = "ErrorByBackend.{0}".format(signature)
         type_tag = "type:{0}".format(ex.__class__.__name__)
-        stat = "ErrorByBackend.{0}".format(signature, tags=[type_tag])
-        self.stats_client.increment(stat)
+        self.stats_client.increment(stat, value=1, tags=[type_tag])
 
     def _track_retries(self, signature, retries):
         stat = "RetriesByBackend.{0}".format(signature)
-        self.stats_client.histogram(stat, int(retries))
+        self.stats_client.histogram(stat, value=int(retries))
 
     def _track_status_code(self, signature, status_code):
+        stat = "StatusCodeByBackend.{0}".format(signature)
         status_code_tag = "status_code:{0}".format(status_code)
-        stat = "StatusCodeByBackend.{0}".format(signature, tags=[status_code_tag])
-        self.stats_client.increment(stat)
+        self.stats_client.increment(stat, value=1, tags=[status_code_tag])
