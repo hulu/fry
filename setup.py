@@ -6,7 +6,7 @@ with open(path.join(path.abspath(path.dirname(__file__)), 'README.md')) as readm
 
 setup(
     name='fry',
-    version='0.1.4',
+    version='0.2.0',
 
     description="Library for maintaining tracked requests sessions",
     long_description=long_description,

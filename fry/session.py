@@ -1,3 +1,5 @@
+import time
+
 import requests
 import requests.adapters as adapters
 import requests.packages.urllib3 as urllib3
@@ -17,13 +19,13 @@ class FrySession(requests.Session):
         Here we set the stats_client to be used and parse out the adapter_settings
 
         Args:
-            stats_client (StatsClient, optional): StatsClient for FrySession to send stats through
+            stats_client (DogStatsd, optional): DogStatsd object for FrySession to send stats through
             adapter_settings (dict, optional): Dictionary of adapter settings for session. Adapter settings and retry
                 settings are standard for requests library.
         """
         super(FrySession, self).__init__()
 
-        self.stats_client = stats_client if stats_client else stats.NullStatsClient()
+        self.stats_client = stats_client if stats_client else stats.NullStatsd()
         self.adapter_settings = adapter_settings if adapter_settings else {}
 
         self._build_adapters()
@@ -77,7 +79,7 @@ class FrySession(requests.Session):
 
         try:
             response = self._perform_timed_request(method, url, timeout, signature, **kwargs)
-            self._track_status_code(method, signature, response.status_code)
+            self._track_status_code(signature, response.status_code)
             request_retries = adapter_retries - response.raw.retries.total
             return response
         except Exception as ex:
@@ -86,11 +88,11 @@ class FrySession(requests.Session):
                 request_retries = adapter_retries
 
             # Track the error as a 500 in the status code stats
-            self._track_status_code(method, signature, 500)
-            self._track_error(method, signature, ex)
+            self._track_status_code(signature, 500)
+            self._track_error(signature, ex)
             raise
         finally:
-            self._track_retries(method, signature, request_retries)
+            self._track_retries(signature, request_retries)
 
     def _perform_timed_request(self, method, url, timeout, signature, **kwargs):
         """Performs request and reports timing stats using class stats client
@@ -105,24 +107,28 @@ class FrySession(requests.Session):
         Returns:
             requests.Response
         """
-        timer = self.stats_client.get_timer()
+        start = time.time()
 
-        timer.start()
-        response = self.request(method, url, timeout=timeout, **kwargs)
-        timer.stop("ResponseTimeByBackend.{0}.{1}".format(signature, method.upper()))
+        try:
+            response = self.request(method, url, timeout=timeout, **kwargs)
+        finally:
+            stat = "ResponseTimeByBackend.{0}".format(signature)
+            self.stats_client.timing(stat, time.time() - start)
 
         return response
 
     """Stats tracking methods"""
 
-    def _track_error(self, method, signature, ex):
-        stat = "ErrorByBackend.{0}.{1}.{2}".format(signature, method.upper(), ex.__class__.__name__)
+    def _track_error(self, signature, ex):
+        type_tag = "type:{0}".format(ex.__class__.__name__)
+        stat = "ErrorByBackend.{0}".format(signature, tags=[type_tag])
         self.stats_client.increment(stat)
 
-    def _track_retries(self, method, signature, retries):
-        stat = "RetriesByBackend.{0}.{1}".format(signature, method.upper())
-        self.stats_client.increment(stat, delta=int(retries))
+    def _track_retries(self, signature, retries):
+        stat = "RetriesByBackend.{0}".format(signature)
+        self.stats_client.histogram(stat, int(retries))
 
-    def _track_status_code(self, method, signature, code):
-        stat = "StatusCodeByBackend.{0}.{1}.{2}".format(signature, method.upper(), code)
+    def _track_status_code(self, signature, status_code):
+        status_code_tag = "status_code:{0}".format(status_code)
+        stat = "StatusCodeByBackend.{0}".format(signature, tags=[status_code_tag])
         self.stats_client.increment(stat)
