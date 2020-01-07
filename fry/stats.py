@@ -1,19 +1,14 @@
-class NullStatsClient(object):
+from functools import wraps
+
+
+class NullStatsd(object):
     """This null stats client does nothing when called.
     """
-    def increment(self, metric, delta=1):
+    def increment(self, *args, **kwargs):
         pass
 
-    def histogram(self, metric, time):
+    def histogram(self, *args, **kwargs):
         pass
 
-    def get_timer(self):
-        return NullTimer()
-
-
-class NullTimer(object):
-    def start(self):
-        pass
-
-    def stop(self, subname=""):
+    def timing(self, *args, **kwargs):
         pass

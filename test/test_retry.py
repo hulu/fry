@@ -12,5 +12,6 @@ class TestRefry(unittest.TestCase):
         self.assertTrue(refry._is_connection_error(urllib3.exceptions.ConnectionError()))
         self.assertTrue(refry._is_connection_error(urllib3.exceptions.ConnectTimeoutError()))
 
+
 if __name__ == "__main__":
     unittest.main()

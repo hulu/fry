@@ -24,6 +24,9 @@ def http_mock(_, request):
     elif 'example.com/get_num_cookies' in request.url:
         # return the number of cookies in the request as the response content
         response._content = len(request._cookies.items())
+    elif 'example.com/broken' in request.url:
+        # raise exception
+        raise requests.exceptions.ConnectionError("connection error")
     return response
 
 
@@ -37,6 +40,17 @@ class TestFrySession(unittest.TestCase):
                     'read': 3,
                     'connect': 3
                 },
+                'adapter': {
+                    'pool_maxsize': 4,
+                },
+                'adapter_config': {
+                    'timeout': 0.5
+                }
+            }
+        }
+
+        self.adapter_settings_no_retry = {
+            'http://www.example.com': {
                 'adapter': {
                     'pool_maxsize': 4,
                 },
@@ -63,6 +77,13 @@ class TestFrySession(unittest.TestCase):
         self.assertEqual(getattr(example_adapter, 'config').get('timeout'), 0.5,
                          "example adapter should have timeout defined in its config")
 
+        fsession = FrySession(stats_client=None, adapter_settings=self.adapter_settings_no_retry)
+        self.assertEqual(len(fsession.adapters), 3, "Should have base two adapters plus new one")
+
+        example_adapter = fsession.get_adapter('http://www.example.com')
+        self.assertEqual(getattr(example_adapter, 'config').get('timeout'), 0.5,
+                         "example adapter should have timeout defined in its config")
+
     def test_make_get_request(self):
         fsession = FrySession(stats_client=None, adapter_settings=self.adapter_settings)
 
@@ -83,6 +104,18 @@ class TestFrySession(unittest.TestCase):
             response = fsession.make_request('GET', url, 'Example.example', data=request_data)
 
         self.assertIn("paul=rules", response.content)
+
+    def test_request_exception_raised(self):
+        fsession = FrySession(stats_client=None, adapter_settings=self.adapter_settings)
+
+        url = 'http://www.example.com/broken'
+        request_params = {'paul': "rules"}
+
+        try:
+            with httmock.HTTMock(http_mock):
+                response = fsession.make_request('GET', url, 'Example.example', params=request_params)
+        except Exception as e:
+            self.assertIsInstance(e, requests.exceptions.ConnectionError)
 
     def test_no_cookie_persistence(self):
         fsession = FrySession(stats_client=None, adapter_settings=self.adapter_settings)
